@@ -1,0 +1,38 @@
+# Build output
+build/
+out/
+cmake-build-*/
+CMakeUserPresets.json
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled files
+*.exe
+*.dll
+*.so
+*.dylib
+*.obj
+*.o
+*.lib
+*.a
+*.exp
+
+# Packages / dependencies
+vcpkg_installed/
+packages/
+
+# Secrets & env
+.env
+*.secret
+credentials.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

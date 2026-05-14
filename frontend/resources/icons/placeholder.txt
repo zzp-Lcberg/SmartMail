@@ -1,0 +1,2 @@
+This directory will contain application icons.
+Placeholder for qt_add_resources.
