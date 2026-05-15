@@ -52,4 +52,28 @@ void FolderModel::updateUnreadCount(const std::string& folderPath, int count) {
     }
 }
 
+void FolderModel::incrementUnread(const std::string& folderPath) {
+    for (size_t i = 0; i < folders_.size(); ++i) {
+        if (folders_[i].path == folderPath) {
+            folders_[i].unreadCount++;
+            QModelIndex idx = index(static_cast<int>(i));
+            emit dataChanged(idx, idx, {UnreadCountRole});
+            return;
+        }
+    }
+}
+
+void FolderModel::decrementUnread(const std::string& folderPath) {
+    for (size_t i = 0; i < folders_.size(); ++i) {
+        if (folders_[i].path == folderPath) {
+            if (folders_[i].unreadCount > 0) {
+                folders_[i].unreadCount--;
+                QModelIndex idx = index(static_cast<int>(i));
+                emit dataChanged(idx, idx, {UnreadCountRole});
+            }
+            return;
+        }
+    }
+}
+
 } // namespace SmartMail

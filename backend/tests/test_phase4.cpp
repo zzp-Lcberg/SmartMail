@@ -110,9 +110,9 @@ static void test_add_account_encrypts_password() {
     bool ok = mgr.add(acc);
     CHECK(ok, "add should succeed");
 
-    auto retrieved = mgr.getById(acc.id);
-    CHECK(retrieved != nullptr, "account should exist");
-    CHECK(retrieved->encryptedPassword != "plaintext_app_password",
+    auto all = mgr.getAll();
+    CHECK(all.size() == 1, "should have 1 account");
+    CHECK(all[0].encryptedPassword != "plaintext_app_password",
           "stored password should be encrypted (not plaintext)");
     PASS();
 }
@@ -126,9 +126,11 @@ static void test_get_decrypted_password() {
     const std::string originalPassword = "my_app_password";
     acc.encryptedPassword = originalPassword;
 
-    mgr.add(acc);
+    CHECK(mgr.add(acc), "add should succeed");
 
-    std::string decrypted = mgr.getDecryptedPassword(acc.id);
+    auto all = mgr.getAll();
+    CHECK(all.size() == 1, "should have 1 account");
+    std::string decrypted = mgr.getDecryptedPassword(all[0].id);
     CHECK(decrypted == originalPassword, "decrypted password should match original");
     PASS();
 }
@@ -182,15 +184,18 @@ static void test_update_account() {
     mgr.setMasterPassword("master123");
 
     auto acc = makeTestAccount("update@example.com");
-    mgr.add(acc);
+    CHECK(mgr.add(acc), "add should succeed");
+
+    auto all = mgr.getAll();
+    CHECK(all.size() == 1, "should have 1 account");
 
     // 更新显示名称
-    auto existing = mgr.getById(acc.id);
+    auto existing = mgr.getById(all[0].id);
     existing->displayName = "Updated Name";
     bool ok = mgr.update(*existing);
     CHECK(ok, "update should succeed");
 
-    auto updated = mgr.getById(acc.id);
+    auto updated = mgr.getById(all[0].id);
     CHECK(updated->displayName == "Updated Name", "displayName should be updated");
     PASS();
 }
@@ -202,14 +207,17 @@ static void test_update_password() {
 
     auto acc = makeTestAccount("pass@example.com");
     acc.encryptedPassword = "old_password";
-    mgr.add(acc);
+    CHECK(mgr.add(acc), "add should succeed");
+
+    auto all = mgr.getAll();
+    CHECK(all.size() == 1, "should have 1 account");
 
     // 更新密码
-    auto existing = mgr.getById(acc.id);
+    auto existing = mgr.getById(all[0].id);
     existing->encryptedPassword = "new_password";
     mgr.update(*existing);
 
-    std::string decrypted = mgr.getDecryptedPassword(acc.id);
+    std::string decrypted = mgr.getDecryptedPassword(all[0].id);
     CHECK(decrypted == "new_password", "password should be updated");
     PASS();
 }
@@ -220,10 +228,12 @@ static void test_remove_account() {
     mgr.setMasterPassword("master123");
 
     auto acc = makeTestAccount("remove@example.com");
-    mgr.add(acc);
-    CHECK(mgr.getAll().size() == 1, "should have 1 account");
+    CHECK(mgr.add(acc), "add should succeed");
 
-    bool ok = mgr.remove(acc.id);
+    auto all = mgr.getAll();
+    CHECK(all.size() == 1, "should have 1 account");
+
+    bool ok = mgr.remove(all[0].id);
     CHECK(ok, "remove should succeed");
     CHECK(mgr.getAll().size() == 0, "should have 0 accounts after remove");
 

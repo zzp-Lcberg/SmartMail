@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(SmartMail VERSION 1.0.0 LANGUAGES CXX)
+project(SmartMail VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,17 +12,29 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find_package
-find_package(OpenSSL REQUIRED)
-find_package(CURL REQUIRED)
-find_package(nlohmann_json REQUIRED)
-find_package(SQLite3 REQUIRED)
+# =============================================
+# Dependencies — manual paths (vcpkg unavailable)
+# =============================================
+set(PROJECT_DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps)
 
-# cpp-httplib (header-only, 通过 vcpkg 或手动引入)
-find_path(HTTPLIB_INCLUDE_DIR httplib.h)
-if(NOT HTTPLIB_INCLUDE_DIR)
-    message(FATAL_ERROR "cpp-httplib not found. Please install via vcpkg or provide the include path.")
-endif()
+# OpenSSL (pre-installed locally)
+set(OPENSSL_ROOT_DIR "C:/Users/pengzhanzhu/openssl-local")
+find_package(OpenSSL REQUIRED)
+
+# cpp-httplib (header-only, bundled)
+set(HTTPLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/backend/src/server)
+
+# nlohmann/json (header-only, bundled)
+set(NLOHMANN_JSON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/backend/src/server)
+
+# CURL (manual import library)
+set(CURL_INCLUDE_DIR ${PROJECT_DEPS_DIR}/curl/include)
+set(CURL_LIBRARY_DIR ${PROJECT_DEPS_DIR}/curl/lib)
+set(CURL_LIBRARY ${CURL_LIBRARY_DIR}/libcurl.lib)
+
+# SQLite3 (amalgamation, compiled from source)
+set(SQLITE3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/backend/src/storage)
+set(SQLITE3_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/backend/src/storage/sqlite3.c)
 
 # common 库 (仅头文件)
 add_library(SmartMailCommon INTERFACE)

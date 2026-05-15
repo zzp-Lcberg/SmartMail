@@ -4,6 +4,12 @@
 #include <openssl/rand.h>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
+#include <openssl/err.h>
+
+// LibreSSL 4.x removed ERR_clear_error, provide fallback
+#if !defined(ERR_clear_error)
+static inline void ERR_clear_error(void) {}
+#endif
 #include <vector>
 #include <cstring>
 

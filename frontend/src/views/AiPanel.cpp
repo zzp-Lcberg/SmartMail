@@ -6,16 +6,17 @@ namespace SmartMail {
 
 AiPanel::AiPanel(QWidget* parent) : QWidget(parent) {
     auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(16, 12, 16, 12);
+    layout->setSpacing(10);
 
     titleLabel_ = new QLabel("AI 助手");
+    titleLabel_->setObjectName("aiTitleLabel");
     QFont titleFont = titleLabel_->font();
     titleFont.setBold(true);
     titleLabel_->setFont(titleFont);
 
     tagLabel_ = new QLabel();
-    tagLabel_->setStyleSheet(
-        "background-color: #6495ED; color: white; padding: 4px 12px; "
-        "border-radius: 4px; font-size: 14px;");
+    tagLabel_->setObjectName("aiTagLabel");
     tagLabel_->setAlignment(Qt::AlignCenter);
     tagLabel_->hide();
 
@@ -24,9 +25,12 @@ AiPanel::AiPanel(QWidget* parent) : QWidget(parent) {
     replyEdit_->setMinimumHeight(120);
 
     auto* btnLayout = new QHBoxLayout();
+    btnLayout->setSpacing(8);
     acceptBtn_ = new QPushButton("采纳");
     regenerateBtn_ = new QPushButton("重新生成");
+    regenerateBtn_->setObjectName("secondaryBtn");
     editBtn_ = new QPushButton("编辑");
+    editBtn_->setObjectName("secondaryBtn");
     btnLayout->addWidget(acceptBtn_);
     btnLayout->addWidget(regenerateBtn_);
     btnLayout->addWidget(editBtn_);

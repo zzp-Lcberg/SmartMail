@@ -7,7 +7,7 @@ namespace SmartMail {
 
 WebSocketHandler::WebSocketHandler(QObject* parent)
     : QObject(parent)
-    , socket_(new QWebSocket(QString(), this))
+    , socket_(new QWebSocket(QString(), QWebSocketProtocol::Version13, this))
     , reconnectTimer_(new QTimer(this)) {
     reconnectTimer_->setSingleShot(true);
     connect(socket_, &QWebSocket::connected, this, &WebSocketHandler::onConnected);

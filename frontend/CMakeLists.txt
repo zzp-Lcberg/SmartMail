@@ -1,3 +1,7 @@
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
 set(FRONTEND_SOURCES
     src/main.cpp
     src/client/ServiceClient.cpp
@@ -27,7 +31,11 @@ set(FRONTEND_HEADERS
     src/dialogs/AccountDialog.hpp
 )
 
-add_executable(SmartMailClient ${FRONTEND_SOURCES} ${FRONTEND_HEADERS})
+set(RESOURCE_FILES
+    resources/resources.qrc
+)
+
+add_executable(SmartMailClient ${FRONTEND_SOURCES} ${FRONTEND_HEADERS} ${RESOURCE_FILES})
 
 target_include_directories(SmartMailClient PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -39,11 +47,4 @@ target_link_libraries(SmartMailClient PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::WebSockets
-)
-
-# 资源文件
-qt_add_resources(SmartMailClient "resources"
-    PREFIX "/"
-    FILES
-        resources/icons/placeholder.txt
 )

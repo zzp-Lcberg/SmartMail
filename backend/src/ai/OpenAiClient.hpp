@@ -23,6 +23,10 @@ private:
                                  const std::string& userPrompt);
     std::string callApi(const std::string& systemPrompt,
                         const std::string& userMessage);
+    std::string buildChatJson(const std::string& systemPrompt,
+                              const std::string& userMessage);
+    std::string parseApiResponse(const std::string& responseBody);
+    static size_t writeCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
     OpenAiConfig config_;
 };

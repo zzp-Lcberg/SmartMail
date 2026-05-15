@@ -49,6 +49,7 @@ int main(int argc, char* argv[]) {
     aiConfig.baseUrl = "https://api.openai.com/v1/chat/completions";
     aiConfig.model = "gpt-4o";
     AiService aiService(aiConfig);
+    aiService.setStorageManager(&storage);
     LOG_INFO("AiService initialized");
 
     // --- API Server ---

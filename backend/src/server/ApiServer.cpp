@@ -135,7 +135,7 @@ ApiServer::~ApiServer() {
 
 bool ApiServer::start(const std::string& host, int port) {
     if (running_) {
-        LOG_WARNING("ApiServer already running");
+        LOG_WARN("ApiServer already running");
         return false;
     }
     host_ = host;
@@ -197,7 +197,7 @@ void ApiServer::setupWebSocket() {
         std::string msg;
         while (ws.is_open()) {
             auto result = ws.read(msg);
-            if (result != httplib::ws::ReadResult::Success) {
+            if (result == httplib::ws::ReadResult::Fail) {
                 break;
             }
         }
@@ -314,6 +314,68 @@ void ApiServer::setupRoutes() {
             return;
         }
         res.set_content(R"({"status":"ok"})", "application/json");
+    });
+
+    // POST /api/test-connection
+    httpServer_->Post("/api/test-connection", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!accountManager_) {
+            res.status = 503;
+            res.set_content(R"({"error":"AccountManager not available"})", "application/json");
+            return;
+        }
+        try {
+            auto j = nlohmann::json::parse(req.body);
+            AccountConfig acc = parseAccountFromJson(j);
+            bool ok = accountManager_->testConnection(acc);
+            nlohmann::json result;
+            result["success"] = ok;
+            result["message"] = ok ? "SMTP server reachable" : "Connection failed";
+            res.set_content(result.dump(), "application/json");
+        } catch (const std::exception& e) {
+            nlohmann::json result;
+            result["success"] = false;
+            result["message"] = std::string("Invalid request: ") + e.what();
+            res.set_content(result.dump(), "application/json");
+        }
+    });
+
+    // GET /api/settings
+    httpServer_->Get("/api/settings", [this](const httplib::Request& /*req*/, httplib::Response& res) {
+        if (!storageManager_) {
+            res.status = 503;
+            res.set_content(R"({"error":"StorageManager not available"})", "application/json");
+            return;
+        }
+        nlohmann::json j;
+        j["api_key"] = storageManager_->getSetting("api_key", "");
+        j["base_url"] = storageManager_->getSetting("base_url", "https://api.openai.com/v1/chat/completions");
+        j["model"] = storageManager_->getSetting("model", "gpt-4o");
+        j["auto_classify"] = storageManager_->getSetting("auto_classify", "true");
+        j["sync_interval"] = storageManager_->getSetting("sync_interval", "300");
+        res.set_content(j.dump(), "application/json");
+    });
+
+    // POST /api/settings
+    httpServer_->Post("/api/settings", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!storageManager_) {
+            res.status = 503;
+            res.set_content(R"({"error":"StorageManager not available"})", "application/json");
+            return;
+        }
+        try {
+            auto j = nlohmann::json::parse(req.body);
+            for (auto& [key, value] : j.items()) {
+                if (value.is_string()) {
+                    storageManager_->setSetting(key, value.get<std::string>());
+                }
+            }
+            res.set_content(R"({"status":"ok"})", "application/json");
+        } catch (const std::exception& e) {
+            res.status = 400;
+            nlohmann::json err;
+            err["error"] = std::string("Invalid JSON: ") + e.what();
+            res.set_content(err.dump(), "application/json");
+        }
     });
 
     // GET /api/accounts/{id}/emails
@@ -433,8 +495,13 @@ void ApiServer::setupRoutes() {
         } catch (...) {
             content = req.body;
         }
-        aiService_->classifyAsync(id, content, [](const ClassificationResult& /*result*/) {
-            // Result will be stored via AiService -> StorageManager
+        aiService_->classifyAsync(id, content, [this, id](const ClassificationResult& result) {
+            if (result.success && storageManager_) {
+                storageManager_->saveAiTag(id, result.tag);
+                LOG_INFO("AI classification saved: email=" + id + " tag=" + result.tag);
+            } else if (!result.success) {
+                LOG_WARN("AI classification failed for email " + id + ": " + result.errorMessage);
+            }
         });
         res.status = 202;
         res.set_content(R"({"status":"accepted"})", "application/json");
@@ -474,8 +541,18 @@ void ApiServer::setupRoutes() {
             res.set_content(R"({"error":"Invalid JSON body"})", "application/json");
             return;
         }
-        aiService_->generateReplyAsync(id, originalEmail, userPrompt, [](const ReplyResult& /*result*/) {
-            // Result handled by callback
+        aiService_->generateReplyAsync(id, originalEmail, userPrompt, [this, id](const ReplyResult& result) {
+            nlohmann::json j;
+            j["emailId"] = id;
+            if (result.success) {
+                j["replyContent"] = result.replyContent;
+                broadcast("reply_ready", j.dump());
+                LOG_INFO("AI reply generated and broadcast for email " + id);
+            } else {
+                j["error"] = result.errorMessage;
+                broadcast("reply_error", j.dump());
+                LOG_WARN("AI reply failed for email " + id + ": " + result.errorMessage);
+            }
         });
         res.status = 202;
         res.set_content(R"({"status":"accepted"})", "application/json");
@@ -504,7 +581,7 @@ void ApiServer::setupRoutes() {
         res.set_content(arr.dump(), "application/json");
     });
 
-    LOG_DEBUG("API routes registered (13 endpoints)");
+    LOG_DEBUG("API routes registered (16 endpoints)");
 }
 
 } // namespace SmartMail

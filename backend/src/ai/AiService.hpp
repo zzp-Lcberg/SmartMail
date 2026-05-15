@@ -12,6 +12,7 @@
 namespace SmartMail {
 
 class OpenAiClient;
+class StorageManager;
 
 /// AI 服务管理层
 class AiService {
@@ -33,6 +34,8 @@ public:
 
     bool isAvailable() const;
 
+    void setStorageManager(StorageManager* mgr) { storageManager_ = mgr; }
+
 private:
     void workerLoop();
     struct Task {
@@ -51,6 +54,7 @@ private:
     std::mutex mutex_;
     std::condition_variable cv_;
     bool running_ = true;
+    StorageManager* storageManager_ = nullptr;
 };
 
 } // namespace SmartMail

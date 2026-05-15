@@ -31,7 +31,7 @@ public:
     // 邮件 API
     void getEmails(const QString& accountId, const QString& folder = "INBOX",
                    int limit = 50, int offset = 0,
-                   std::function<void(QJsonArray)> callback);
+                   std::function<void(QJsonArray)> callback = {});
     void getEmailDetail(const QString& id,
                         std::function<void(QJsonObject)> callback);
     void sendEmail(const Email& email, std::function<void(bool)> callback);
@@ -39,14 +39,23 @@ public:
     void deleteEmail(const QString& id, std::function<void(bool)> callback);
 
     // AI API
-    void classifyEmail(const QString& id, std::function<void(QJsonObject)> callback);
-    void generateReply(const QString& id, const QString& prompt,
+    void classifyEmail(const QString& id, const QString& content,
                        std::function<void(QJsonObject)> callback);
+    void generateReply(const QString& id, const QString& originalEmail,
+                       const QString& prompt,
+                       std::function<void(QJsonObject)> callback);
+
+    // 连接测试 & 设置
+    void testConnection(const AccountConfig& account,
+                        std::function<void(bool, QString)> callback);
+    void getSettings(std::function<void(QJsonObject)> callback);
+    void updateSettings(const QJsonObject& settings,
+                        std::function<void(bool)> callback);
 
     // 搜索
     void search(const QString& query, const QString& tag = "",
                 int64_t fromDate = 0, int64_t toDate = 0,
-                std::function<void(QJsonArray)> callback);
+                std::function<void(QJsonArray)> callback = {});
 
 signals:
     void connected();

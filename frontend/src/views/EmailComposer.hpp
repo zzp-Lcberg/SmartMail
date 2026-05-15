@@ -14,6 +14,7 @@ public:
     explicit EmailComposer(QWidget* parent = nullptr);
 
     void setReplyMode(const Email& originalEmail);
+    void setForwardMode(const Email& originalEmail);
     void setDraftContent(const std::string& subject, const std::string& body);
     Email buildEmail() const;
 

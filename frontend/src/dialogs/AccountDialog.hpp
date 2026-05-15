@@ -9,6 +9,8 @@
 
 namespace SmartMail {
 
+class ServiceClient;
+
 /// 单个账号的添加/编辑对话框
 class AccountDialog : public QDialog {
     Q_OBJECT
@@ -17,6 +19,9 @@ public:
 
     void setAccount(const AccountConfig& account);
     AccountConfig getAccount() const;
+
+    void setServiceClient(ServiceClient* client);
+    void setEditMode(const std::string& existingAccountId);
 
 private slots:
     void onTestConnection();
@@ -33,6 +38,10 @@ private:
     QCheckBox* sslCheck_;
     QComboBox* protocolCombo_;
     QSpinBox* syncIntervalSpin_;
+
+    ServiceClient* client_ = nullptr;
+    bool editMode_ = false;
+    std::string editAccountId_;
 };
 
 } // namespace SmartMail

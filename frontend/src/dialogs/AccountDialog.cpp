@@ -1,4 +1,5 @@
 #include "AccountDialog.hpp"
+#include "client/ServiceClient.hpp"
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QPushButton>
@@ -72,6 +73,17 @@ AccountDialog::AccountDialog(QWidget* parent) : QDialog(parent) {
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
 }
 
+void AccountDialog::setServiceClient(ServiceClient* client) {
+    client_ = client;
+}
+
+void AccountDialog::setEditMode(const std::string& existingAccountId) {
+    editMode_ = true;
+    editAccountId_ = existingAccountId;
+    setWindowTitle("编辑账号");
+    passwordEdit_->setPlaceholderText("留空则不修改密码");
+}
+
 void AccountDialog::setAccount(const AccountConfig& account) {
     displayNameEdit_->setText(QString::fromStdString(account.displayName));
     emailEdit_->setText(QString::fromStdString(account.email));
@@ -81,12 +93,16 @@ void AccountDialog::setAccount(const AccountConfig& account) {
     imapPortSpin_->setValue(account.imapPort);
     sslCheck_->setChecked(account.smtpUseSSL);
     syncIntervalSpin_->setValue(account.syncInterval);
+
+    int idx = (account.preferredProtocol == AccountConfig::Protocol::POP3) ? 1 : 0;
+    protocolCombo_->setCurrentIndex(idx);
 }
 
 AccountConfig AccountDialog::getAccount() const {
     AccountConfig account;
     account.displayName = displayNameEdit_->text().toStdString();
     account.email = emailEdit_->text().toStdString();
+    account.encryptedPassword = passwordEdit_->text().toStdString();
     account.smtpServer = smtpServerEdit_->text().toStdString();
     account.smtpPort = smtpPortSpin_->value();
     account.imapServer = imapServerEdit_->text().toStdString();
@@ -94,17 +110,54 @@ AccountConfig AccountDialog::getAccount() const {
     account.smtpUseSSL = sslCheck_->isChecked();
     account.imapUseSSL = sslCheck_->isChecked();
     account.syncInterval = syncIntervalSpin_->value();
+
+    int protocolValue = protocolCombo_->currentData().toInt();
+    account.preferredProtocol = (protocolValue == 1)
+        ? AccountConfig::Protocol::POP3
+        : AccountConfig::Protocol::IMAP;
     return account;
 }
 
 void AccountDialog::onTestConnection() {
-    // TODO: 调用后端测试连接 (Phase 10)
-    QMessageBox::information(this, "测试连接", "连接测试功能开发中");
+    if (!client_) {
+        QMessageBox::warning(this, "错误", "服务未连接");
+        return;
+    }
+
+    AccountConfig acc = getAccount();
+    if (acc.email.empty()) {
+        QMessageBox::warning(this, "信息不完整", "请先填写邮箱地址。");
+        return;
+    }
+    if (acc.smtpServer.empty()) {
+        QMessageBox::warning(this, "信息不完整", "请先填写SMTP服务器地址。");
+        return;
+    }
+
+    auto* testBtn = qobject_cast<QPushButton*>(sender());
+    if (testBtn) testBtn->setEnabled(false);
+
+    client_->testConnection(acc, [this, testBtn](bool success, const QString& message) {
+        if (testBtn) testBtn->setEnabled(true);
+        if (success) {
+            QMessageBox::information(this, "连接成功", message);
+        } else {
+            QMessageBox::warning(this, "连接失败", message);
+        }
+    });
 }
 
 void AccountDialog::onSave() {
-    if (emailEdit_->text().isEmpty() || passwordEdit_->text().isEmpty()) {
-        QMessageBox::warning(this, "信息不完整", "请填写邮箱地址和密码。");
+    if (emailEdit_->text().isEmpty()) {
+        QMessageBox::warning(this, "信息不完整", "请填写邮箱地址。");
+        return;
+    }
+    if (passwordEdit_->text().isEmpty() && !editMode_) {
+        QMessageBox::warning(this, "信息不完整", "请填写密码/授权码。");
+        return;
+    }
+    if (smtpServerEdit_->text().isEmpty()) {
+        QMessageBox::warning(this, "信息不完整", "请填写SMTP服务器地址。");
         return;
     }
     accept();

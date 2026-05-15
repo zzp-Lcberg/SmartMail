@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <sqlite3.h>
+#include "sqlite3.h"
 #include "types/Email.hpp"
 #include "types/AccountConfig.hpp"
 #include "types/AiResult.hpp"
@@ -19,6 +19,10 @@ public:
     bool open(const std::string& dbPath);
     void close();
     bool isOpen() const;
+
+    // 账号操作
+    bool saveAccount(const AccountConfig& acc);
+    bool deleteAccount(const std::string& id);
 
     // 邮件操作
     bool saveEmail(const Email& email);

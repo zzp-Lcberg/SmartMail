@@ -25,6 +25,8 @@ public:
 
     void setFolders(const std::vector<Folder>& folders);
     void updateUnreadCount(const std::string& folderPath, int count);
+    void incrementUnread(const std::string& folderPath);
+    void decrementUnread(const std::string& folderPath);
 
 private:
     std::vector<Folder> folders_;

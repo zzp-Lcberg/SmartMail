@@ -3,11 +3,24 @@
 #include <cstdio>
 #include <iostream>
 #include "storage/StorageManager.hpp"
+#include "types/AccountConfig.hpp"
 
 using namespace SmartMail;
 
 static int g_passed = 0;
 static int g_failed = 0;
+
+// Helper: create a minimal account record to satisfy foreign key constraint
+static AccountConfig makeTestAccount(const std::string& id) {
+    AccountConfig acc;
+    acc.id = id;
+    acc.displayName = "Test " + id;
+    acc.email = id + "@test.com";
+    acc.encryptedPassword = "pw";
+    acc.smtpServer = "smtp.test.com";
+    acc.imapServer = "imap.test.com";
+    return acc;
+}
 
 #define TEST(name) \
     do { std::cout << "  TEST: " << name << " ... "; } while(0)
@@ -33,7 +46,7 @@ static Email makeTestEmail(const std::string& id, const std::string& accountId,
     e.subject = "Test Subject " + id;
     e.bodyPlain = "This is a test email body for " + id;
     e.bodyHtml = "<p>This is a test email body for " + id + "</p>";
-    e.receivedAt = 1700000000 + std::stoll(id);
+    e.receivedAt = 1700000000 + static_cast<int64_t>(id.size()) * 1000 + static_cast<int64_t>(id[0]);
     e.folder = folder;
     e.isRead = false;
     return e;
@@ -61,6 +74,8 @@ static void test_save_and_get_email() {
     StorageManager sm;
     sm.open("test_storage.db");
 
+    sm.saveAccount(makeTestAccount("acc1"));
+
     Email email = makeTestEmail("e001", "acc1");
     CHECK(sm.saveEmail(email), "saveEmail failed");
 
@@ -82,6 +97,9 @@ static void test_save_and_get_emails_by_folder() {
     TEST("get emails by folder");
     StorageManager sm;
     sm.open("test_storage.db");
+
+    sm.saveAccount(makeTestAccount("acc1"));
+    sm.saveAccount(makeTestAccount("acc2"));
 
     sm.saveEmail(makeTestEmail("e01", "acc1", "INBOX"));
     sm.saveEmail(makeTestEmail("e02", "acc1", "INBOX"));
@@ -107,6 +125,7 @@ static void test_mark_as_read() {
     StorageManager sm;
     sm.open("test_storage.db");
 
+    sm.saveAccount(makeTestAccount("acc1"));
     sm.saveEmail(makeTestEmail("e01", "acc1"));
     CHECK(sm.markAsRead("e01"), "markAsRead failed");
 
@@ -124,6 +143,7 @@ static void test_soft_delete() {
     StorageManager sm;
     sm.open("test_storage.db");
 
+    sm.saveAccount(makeTestAccount("acc1"));
     sm.saveEmail(makeTestEmail("e01", "acc1", "INBOX"));
     CHECK(sm.deleteEmail("e01"), "deleteEmail failed");
 
@@ -140,6 +160,8 @@ static void test_unread_count() {
     TEST("unread count");
     StorageManager sm;
     sm.open("test_storage.db");
+
+    sm.saveAccount(makeTestAccount("acc1"));
 
     Email e1 = makeTestEmail("e01", "acc1");
     e1.isRead = false;
@@ -165,6 +187,8 @@ static void test_save_emails_batch() {
     StorageManager sm;
     sm.open("test_storage.db");
 
+    sm.saveAccount(makeTestAccount("acc1"));
+
     std::vector<Email> batch;
     for (int i = 0; i < 10; ++i) {
         batch.push_back(makeTestEmail("batch" + std::to_string(i), "acc1"));
@@ -184,6 +208,7 @@ static void test_ai_tags() {
     StorageManager sm;
     sm.open("test_storage.db");
 
+    sm.saveAccount(makeTestAccount("acc1"));
     sm.saveEmail(makeTestEmail("e01", "acc1"));
 
     CHECK(sm.saveAiTag("e01", "工作", false), "saveAiTag failed");
@@ -227,6 +252,8 @@ static void test_pagination() {
     TEST("pagination with limit/offset");
     StorageManager sm;
     sm.open("test_storage.db");
+
+    sm.saveAccount(makeTestAccount("acc1"));
 
     for (int i = 0; i < 25; ++i) {
         sm.saveEmail(makeTestEmail("page" + std::to_string(i), "acc1"));

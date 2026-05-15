@@ -56,6 +56,20 @@ void EmailComposer::setReplyMode(const Email& originalEmail) {
     setWindowTitle("回复邮件");
 }
 
+void EmailComposer::setForwardMode(const Email& originalEmail) {
+    replyMode_ = false;
+    originalEmailId_ = originalEmail.id;
+    toEdit_->clear();
+    toEdit_->setPlaceholderText("转发收件人邮箱");
+    subjectEdit_->setText("Fwd: " + QString::fromStdString(originalEmail.subject));
+    bodyEdit_->setPlainText(QString::fromStdString(
+        "\n\n--- 转发邮件 ---\n"
+        "发件人: " + originalEmail.sender + "\n"
+        "主题: " + originalEmail.subject + "\n"
+        "---\n" + originalEmail.bodyPlain));
+    setWindowTitle("转发邮件");
+}
+
 void EmailComposer::setDraftContent(const std::string& subject,
                                      const std::string& body) {
     subjectEdit_->setText(QString::fromStdString(subject));
@@ -84,8 +98,11 @@ void EmailComposer::onSend() {
 }
 
 void EmailComposer::onSaveDraft() {
-    // TODO: 保存草稿到后端 (Phase 9)
-    reject();
+    // TODO: 保存草稿到后端 (Phase 10)
+    Email draft = buildEmail();
+    draft.folder = "Drafts";
+    emit emailReady(draft);
+    accept();
 }
 
 void EmailComposer::onCancel() {

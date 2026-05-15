@@ -1,4 +1,7 @@
 #include "SettingsDialog.hpp"
+#include "AccountDialog.hpp"
+#include "client/ServiceClient.hpp"
+#include "utils/Config.hpp"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -6,6 +9,9 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QMessageBox>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonDocument>
 
 namespace SmartMail {
 
@@ -52,14 +58,18 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
 
     auto* accountBtnLayout = new QHBoxLayout();
     auto* addAccountBtn = new QPushButton("添加账号");
+    auto* editAccountBtn = new QPushButton("编辑账号");
     auto* removeAccountBtn = new QPushButton("删除账号");
     accountBtnLayout->addWidget(addAccountBtn);
+    accountBtnLayout->addWidget(editAccountBtn);
     accountBtnLayout->addWidget(removeAccountBtn);
     accountBtnLayout->addStretch();
     accountLayout->addLayout(accountBtnLayout);
 
     connect(addAccountBtn, &QPushButton::clicked, this, &SettingsDialog::onAddAccount);
+    connect(editAccountBtn, &QPushButton::clicked, this, &SettingsDialog::onEditAccount);
     connect(removeAccountBtn, &QPushButton::clicked, this, &SettingsDialog::onRemoveAccount);
+    connect(accountList_, &QListWidget::itemDoubleClicked, this, &SettingsDialog::onEditAccount);
 
     // === AI 设置页 ===
     auto* aiPage = new QWidget();
@@ -112,20 +122,151 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
 }
 
+void SettingsDialog::setServiceClient(ServiceClient* client) {
+    client_ = client;
+}
+
+void SettingsDialog::setConfig(Config* config) {
+    config_ = config;
+    // 加载本地配置
+    if (config_) {
+        syncIntervalSpin_->setValue(config_->getInt("sync_interval", 300));
+        minimizeToTrayCheck_->setChecked(config_->getBool("minimize_to_tray", false));
+    }
+}
+
+void SettingsDialog::loadAccounts() {
+    if (!client_) return;
+    client_->getAccounts([this](const QJsonArray& arr) {
+        accounts_.clear();
+        accountList_->clear();
+        for (const auto& val : arr) {
+            QJsonObject obj = val.toObject();
+            AccountConfig acc;
+            acc.id = obj["id"].toString().toStdString();
+            acc.displayName = obj["displayName"].toString().toStdString();
+            acc.email = obj["email"].toString().toStdString();
+            acc.smtpServer = obj["smtpServer"].toString().toStdString();
+            acc.smtpPort = obj["smtpPort"].toInt(465);
+            acc.smtpUseSSL = obj["smtpUseSSL"].toBool(true);
+            acc.imapServer = obj["imapServer"].toString().toStdString();
+            acc.imapPort = obj["imapPort"].toInt(993);
+            acc.imapUseSSL = obj["imapUseSSL"].toBool(true);
+            acc.syncInterval = obj["syncInterval"].toInt(300);
+            acc.autoClassify = obj["autoClassify"].toBool(true);
+
+            QString protocol = obj["preferredProtocol"].toString();
+            acc.preferredProtocol = (protocol == "POP3")
+                ? AccountConfig::Protocol::POP3
+                : AccountConfig::Protocol::IMAP;
+
+            accounts_.push_back(acc);
+
+            QString label = QString::fromStdString(acc.displayName)
+                          + " <" + QString::fromStdString(acc.email) + ">";
+            accountList_->addItem(label);
+        }
+    });
+}
+
+void SettingsDialog::loadSettings() {
+    if (!client_) return;
+    client_->getSettings([this](const QJsonObject& settings) {
+        if (settings.contains("api_key") && !settings["api_key"].toString().isEmpty())
+            apiKeyEdit_->setText(settings["api_key"].toString());
+        if (settings.contains("base_url") && !settings["base_url"].toString().isEmpty())
+            apiUrlEdit_->setText(settings["base_url"].toString());
+        if (settings.contains("auto_classify"))
+            autoClassifyCheck_->setChecked(settings["auto_classify"].toString() == "true");
+    });
+}
+
 void SettingsDialog::onSave() {
-    // TODO: 保存所有设置 (Phase 10)
-    QMessageBox::information(this, "提示", "设置已保存（功能开发中）");
+    // 1. Save AI settings to backend
+    if (client_) {
+        QJsonObject aiSettings;
+        aiSettings["api_key"] = apiKeyEdit_->text();
+        aiSettings["base_url"] = apiUrlEdit_->text();
+        aiSettings["auto_classify"] = autoClassifyCheck_->isChecked() ? "true" : "false";
+        client_->updateSettings(aiSettings, [](bool) {});
+
+        // 2. Save sync interval to backend
+        QJsonObject generalSettings;
+        generalSettings["sync_interval"] = QString::number(syncIntervalSpin_->value());
+        client_->updateSettings(generalSettings, [](bool) {});
+    }
+
+    // 3. Save local UI preferences
+    if (config_) {
+        config_->setInt("sync_interval", syncIntervalSpin_->value());
+        config_->setBool("minimize_to_tray", minimizeToTrayCheck_->isChecked());
+        config_->save();
+    }
+
     accept();
 }
 
 void SettingsDialog::onAddAccount() {
-    // TODO: 添加账号 (Phase 10)
-    QMessageBox::information(this, "提示", "账号添加功能开发中");
+    auto* dlg = new AccountDialog(this);
+    dlg->setServiceClient(client_);
+    if (dlg->exec() == QDialog::Accepted) {
+        AccountConfig acc = dlg->getAccount();
+        if (client_) {
+            client_->addAccount(acc, [this](bool ok) {
+                if (ok) {
+                    loadAccounts();
+                } else {
+                    QMessageBox::warning(this, "错误", "添加账号失败");
+                }
+            });
+        }
+    }
+    dlg->deleteLater();
+}
+
+void SettingsDialog::onEditAccount() {
+    int row = accountList_->currentRow();
+    if (row < 0 || row >= static_cast<int>(accounts_.size())) return;
+
+    auto* dlg = new AccountDialog(this);
+    dlg->setServiceClient(client_);
+    dlg->setEditMode(accounts_[row].id);
+    dlg->setAccount(accounts_[row]);
+    if (dlg->exec() == QDialog::Accepted) {
+        AccountConfig acc = dlg->getAccount();
+        acc.id = accounts_[row].id;
+        if (client_) {
+            client_->updateAccount(acc, [this](bool ok) {
+                if (ok) {
+                    loadAccounts();
+                } else {
+                    QMessageBox::warning(this, "错误", "更新账号失败");
+                }
+            });
+        }
+    }
+    dlg->deleteLater();
 }
 
 void SettingsDialog::onRemoveAccount() {
-    // TODO: 删除账号 (Phase 10)
-    QMessageBox::information(this, "提示", "账号删除功能开发中");
+    int row = accountList_->currentRow();
+    if (row < 0 || row >= static_cast<int>(accounts_.size())) return;
+
+    auto answer = QMessageBox::question(this, "确认删除",
+        QString::fromStdString("确定要删除账号 " + accounts_[row].email + " 吗？"),
+        QMessageBox::Yes | QMessageBox::No);
+    if (answer == QMessageBox::Yes) {
+        QString id = QString::fromStdString(accounts_[row].id);
+        if (client_) {
+            client_->deleteAccount(id, [this](bool ok) {
+                if (ok) {
+                    loadAccounts();
+                } else {
+                    QMessageBox::warning(this, "错误", "删除账号失败");
+                }
+            });
+        }
+    }
 }
 
 } // namespace SmartMail

@@ -9,6 +9,7 @@ EmailListView::EmailListView(QWidget* parent) : QListView(parent) {
     setSelectionMode(QAbstractItemView::SingleSelection);
     setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     setUniformItemSizes(false);
+    setMouseTracking(true);
 }
 
 void EmailListView::currentChanged(const QModelIndex& current,
@@ -26,47 +27,90 @@ void EmailItemDelegate::paint(QPainter* painter,
                                const QStyleOptionViewItem& option,
                                const QModelIndex& index) const {
     painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    QRect r = option.rect;
+    bool isRead = index.data(MailModel::IsReadRole).toBool();
+    bool isSelected = option.state & QStyle::State_Selected;
 
     // 背景
-    if (option.state & QStyle::State_Selected) {
-        painter->fillRect(option.rect, option.palette.highlight());
-    } else if (!index.data(MailModel::IsReadRole).toBool()) {
-        painter->fillRect(option.rect, QColor(240, 248, 255)); // 未读淡蓝
+    if (isSelected) {
+        // 选中态: 靛蓝底色 + 左侧高亮条
+        painter->fillRect(r, QColor(42, 48, 80));
+        painter->fillRect(QRect(r.left(), r.top(), 3, r.height()), QColor(92, 124, 250));
+    } else if (option.state & QStyle::State_MouseOver) {
+        painter->fillRect(r, QColor(40, 44, 52));
     }
 
-    QRect r = option.rect.adjusted(8, 4, -8, -4);
+    // 底部细线
+    painter->setPen(QColor(42, 46, 55));
+    painter->drawLine(r.bottomLeft(), r.bottomRight());
 
-    // 发件人 - 加粗
-    QFont senderFont = option.font;
-    senderFont.setBold(!index.data(MailModel::IsReadRole).toBool());
+    // 未读指示圆点
+    QRect contentRect = r.adjusted(14, 10, -12, -10);
+    if (!isRead) {
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(92, 124, 250));
+        painter->drawEllipse(contentRect.left() - 10, contentRect.top() + 6, 6, 6);
+    }
+
+    // 发件人
+    QFont senderFont = painter->font();
+    senderFont.setPixelSize(13);
+    if (!isRead) {
+        senderFont.setBold(true);
+    }
     painter->setFont(senderFont);
-    painter->drawText(r.left(), r.top(), r.width() - 80, 18,
-                      Qt::AlignLeft, index.data(MailModel::SenderRole).toString());
+    painter->setPen(isSelected ? QColor(225, 229, 238) : QColor(220, 224, 233));
+    QRect senderRect(contentRect.left(), contentRect.top(), contentRect.width() - 110, 18);
+    QString sender = painter->fontMetrics().elidedText(
+        index.data(MailModel::SenderRole).toString(), Qt::ElideRight, senderRect.width());
+    painter->drawText(senderRect, Qt::AlignLeft | Qt::AlignVCenter, sender);
 
     // 时间
-    painter->setFont(option.font);
-    painter->setPen(Qt::gray);
+    QFont timeFont = painter->font();
+    timeFont.setPixelSize(11);
+    timeFont.setBold(false);
+    painter->setFont(timeFont);
+    painter->setPen(isSelected ? QColor(150, 160, 180) : QColor(110, 118, 130));
     QDateTime time = index.data(MailModel::TimeRole).toDateTime();
-    painter->drawText(r.right() - 80, r.top(), 80, 18,
-                      Qt::AlignRight, time.toString("MM-dd hh:mm"));
+    QString timeStr = time.toString("MM-dd");
+    if (time.date() == QDate::currentDate()) {
+        timeStr = time.toString("HH:mm");
+    }
+    QRect timeRect(contentRect.right() - 100, contentRect.top(), 100, 18);
+    painter->drawText(timeRect, Qt::AlignRight | Qt::AlignVCenter, timeStr);
 
     // 主题
-    painter->setPen(Qt::black);
-    QString subject = index.data(MailModel::SubjectRole).toString();
-    painter->drawText(r.left(), r.top() + 20, r.width(), 18,
-                      Qt::AlignLeft, subject);
+    QFont subjectFont = painter->font();
+    subjectFont.setPixelSize(13);
+    subjectFont.setBold(false);
+    painter->setFont(subjectFont);
+    painter->setPen(isSelected ? QColor(180, 190, 205) : QColor(150, 158, 170));
+    QString subject = painter->fontMetrics().elidedText(
+        index.data(MailModel::SubjectRole).toString(), Qt::ElideRight,
+        contentRect.width() - 60);
+    QRect subjectRect(contentRect.left(), contentRect.top() + 22,
+                      contentRect.width() - 60, 18);
+    painter->drawText(subjectRect, Qt::AlignLeft | Qt::AlignVCenter, subject);
 
     // AI 标签
     QString aiTag = index.data(MailModel::AiTagRole).toString();
     if (!aiTag.isEmpty()) {
-        QRect tagRect(r.right() - 50, r.top() + 20, 50, 16);
+        QFontMetrics fm(subjectFont);
+        int tagWidth = fm.horizontalAdvance(aiTag) + 16;
+
+        QRect tagRect(contentRect.right() - tagWidth, contentRect.top() + 22,
+                      tagWidth, 16);
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(100, 149, 237));
-        painter->drawRoundedRect(tagRect, 4, 4);
-        painter->setPen(Qt::white);
-        QFont tagFont = option.font;
-        tagFont.setPointSize(8);
+        painter->setBrush(QColor(245, 230, 200));
+        painter->drawRoundedRect(tagRect, 8, 8);
+
+        QFont tagFont = painter->font();
+        tagFont.setPixelSize(10);
+        tagFont.setBold(true);
         painter->setFont(tagFont);
+        painter->setPen(QColor(122, 94, 30));
         painter->drawText(tagRect, Qt::AlignCenter, aiTag);
     }
 
@@ -75,7 +119,7 @@ void EmailItemDelegate::paint(QPainter* painter,
 
 QSize EmailItemDelegate::sizeHint(const QStyleOptionViewItem& /*option*/,
                                    const QModelIndex& /*index*/) const {
-    return {200, 48};
+    return {200, 56};
 }
 
 } // namespace SmartMail

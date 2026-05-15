@@ -7,9 +7,12 @@ namespace SmartMail {
 
 EmailDetailView::EmailDetailView(QWidget* parent) : QWidget(parent) {
     auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(12);
 
     // 邮件头信息
     subjectLabel_ = new QLabel("选择一封邮件");
+    subjectLabel_->setObjectName("subjectLabel");
     subjectLabel_->setWordWrap(true);
     QFont subjectFont = subjectLabel_->font();
     subjectFont.setPointSize(14);
@@ -18,11 +21,11 @@ EmailDetailView::EmailDetailView(QWidget* parent) : QWidget(parent) {
 
     auto* headerLayout = new QHBoxLayout();
     senderLabel_ = new QLabel();
+    senderLabel_->setObjectName("senderLabel");
     timeLabel_ = new QLabel();
-    timeLabel_->setStyleSheet("color: gray;");
+    timeLabel_->setObjectName("timeLabel");
     tagLabel_ = new QLabel();
-    tagLabel_->setStyleSheet(
-        "background-color: #6495ED; color: white; padding: 2px 8px; border-radius: 4px;");
+    tagLabel_->setObjectName("tagLabel");
     tagLabel_->hide();
     headerLayout->addWidget(senderLabel_);
     headerLayout->addStretch();
@@ -35,7 +38,7 @@ EmailDetailView::EmailDetailView(QWidget* parent) : QWidget(parent) {
     // 分隔线
     auto* line = new QFrame();
     line->setFrameShape(QFrame::HLine);
-    line->setFrameShadow(QFrame::Sunken);
+    line->setStyleSheet("QFrame { color: #e0dbd0; }");
     layout->addWidget(line);
 
     // 邮件正文

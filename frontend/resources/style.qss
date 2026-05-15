@@ -1,0 +1,348 @@
+/* ============================================================================
+   SmartMail Desktop — "Midnight Paper" Theme
+   暗色框架 + 温暖纸张质感，专业邮件客户端美学
+   ============================================================================ */
+
+/* === Global Window & Panel === */
+
+QMainWindow {
+    background-color: #1a1d23;
+}
+
+QWidget {
+    font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    font-size: 13px;
+    color: #e1e5ee;
+}
+
+/* === Splitter === */
+
+QSplitter::handle {
+    background-color: #252830;
+    margin: 0;
+}
+
+QSplitter::handle:horizontal {
+    width: 2px;
+}
+
+QSplitter::handle:vertical {
+    height: 2px;
+}
+
+/* === Toolbar === */
+
+QToolBar {
+    background-color: #14161b;
+    border-bottom: 1px solid #252830;
+    padding: 4px 8px;
+    spacing: 4px;
+}
+
+QToolBar QToolButton {
+    color: #a0a8b8;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QToolBar QToolButton:hover {
+    color: #e1e5ee;
+    background-color: #252830;
+}
+
+QToolBar QToolButton:pressed {
+    background-color: #333842;
+}
+
+QToolBar QToolButton#newMailBtn {
+    color: #e1e5ee;
+    background-color: #5c7cfa;
+    font-weight: 600;
+    padding: 5px 16px;
+}
+
+QToolBar QToolButton#newMailBtn:hover {
+    background-color: #6b8afb;
+}
+
+QToolBar QToolButton#newMailBtn:pressed {
+    background-color: #4a6ae8;
+}
+
+/* === Search Box === */
+
+QLineEdit {
+    background-color: #21252b;
+    border: 1px solid #333842;
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: #e1e5ee;
+    font-size: 12px;
+    selection-background-color: #5c7cfa;
+}
+
+QLineEdit:focus {
+    border-color: #5c7cfa;
+}
+
+QLineEdit::placeholder {
+    color: #555b68;
+}
+
+/* === Status Bar === */
+
+QStatusBar {
+    background-color: #14161b;
+    border-top: 1px solid #252830;
+    color: #6a7180;
+    font-size: 11px;
+    padding: 2px 8px;
+}
+
+/* === Folder List (Left Panel) === */
+
+QListView#folderView {
+    background-color: #1a1d23;
+    border: none;
+    outline: none;
+    padding: 8px 4px;
+    font-size: 12px;
+}
+
+QListView#folderView::item {
+    color: #a0a8b8;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin: 1px 4px;
+}
+
+QListView#folderView::item:hover {
+    color: #e1e5ee;
+    background-color: #252830;
+}
+
+QListView#folderView::item:selected {
+    color: #e1e5ee;
+    background-color: #2a3050;
+    font-weight: 500;
+}
+
+/* === Email List (Center Panel) === */
+
+QListView#emailListView {
+    background-color: #21252b;
+    border: none;
+    outline: none;
+}
+
+QListView#emailListView::item {
+    border-bottom: 1px solid #2a2e37;
+    padding: 0;
+    margin: 0;
+}
+
+QListView#emailListView::item:hover {
+    background-color: #282c34;
+}
+
+QListView#emailListView::item:selected {
+    background-color: #2a3050;
+    border-left: 3px solid #5c7cfa;
+}
+
+/* === Email Detail (Right Panel, Top) === */
+
+QWidget#emailDetailView {
+    background-color: #faf8f5;
+    color: #2c3038;
+}
+
+QWidget#emailDetailView QLabel#subjectLabel {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1d23;
+}
+
+QWidget#emailDetailView QLabel#senderLabel {
+    font-size: 13px;
+    color: #5c7cfa;
+    font-weight: 500;
+}
+
+QWidget#emailDetailView QLabel#timeLabel {
+    font-size: 11px;
+    color: #8b91a0;
+}
+
+QWidget#emailDetailView QLabel#tagLabel {
+    font-size: 11px;
+    color: #faf8f5;
+    background-color: #5c7cfa;
+    border-radius: 8px;
+    padding: 2px 10px;
+}
+
+QWidget#emailDetailView QTextBrowser {
+    background-color: transparent;
+    color: #2c3038;
+    font-size: 13px;
+    border: none;
+    selection-background-color: #c5d0f8;
+}
+
+/* === AI Panel (Right Panel, Bottom) === */
+
+QWidget#aiPanel {
+    background-color: #f6f3ee;
+    border-top: 1px solid #e8e3d8;
+}
+
+QWidget#aiPanel QLabel#aiTitleLabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8b7e6a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+QWidget#aiPanel QLabel#aiTagLabel {
+    font-size: 12px;
+    color: #7a5e1e;
+    background-color: #f5e6c8;
+    border-radius: 10px;
+    padding: 4px 14px;
+    font-weight: 500;
+}
+
+QWidget#aiPanel QTextEdit {
+    background-color: #faf8f5;
+    border: 1px solid #e0dbd0;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 13px;
+    color: #2c3038;
+    selection-background-color: #c5d0f8;
+}
+
+QWidget#aiPanel QTextEdit:focus {
+    border-color: #5c7cfa;
+}
+
+QWidget#aiPanel QPushButton {
+    background-color: #5c7cfa;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QWidget#aiPanel QPushButton:hover {
+    background-color: #6b8afb;
+}
+
+QWidget#aiPanel QPushButton:pressed {
+    background-color: #4a6ae8;
+}
+
+QWidget#aiPanel QPushButton#secondaryBtn {
+    background-color: transparent;
+    color: #5c7cfa;
+    border: 1px solid #5c7cfa;
+}
+
+QWidget#aiPanel QPushButton#secondaryBtn:hover {
+    background-color: rgba(92, 124, 250, 0.08);
+}
+
+/* === Scrollbar (Global) === */
+
+QScrollBar:vertical {
+    background: #1a1d23;
+    width: 6px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #3a3f4b;
+    border-radius: 3px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #4a5060;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background: #1a1d23;
+    height: 6px;
+    margin: 0;
+}
+
+QScrollBar::handle:horizontal {
+    background: #3a3f4b;
+    border-radius: 3px;
+    min-width: 30px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #4a5060;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+/* === Buttons (Global) === */
+
+QPushButton {
+    background-color: #333842;
+    color: #e1e5ee;
+    border: 1px solid #3a3f4b;
+    border-radius: 5px;
+    padding: 6px 14px;
+    font-size: 12px;
+}
+
+QPushButton:hover {
+    background-color: #3a404e;
+    border-color: #4a5060;
+}
+
+QPushButton:pressed {
+    background-color: #2a2f3a;
+}
+
+QPushButton:disabled {
+    color: #555b68;
+    background-color: #252830;
+}
+
+/* === Scroll Area === */
+
+QScrollArea {
+    border: none;
+    background: transparent;
+}
+
+/* === Tooltips === */
+
+QToolTip {
+    background-color: #2c3038;
+    color: #e1e5ee;
+    border: 1px solid #3a3f4b;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+}

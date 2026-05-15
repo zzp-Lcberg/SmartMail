@@ -35,8 +35,9 @@ static int g_failed = 0;
 // ============================================================================
 
 static std::string makeRequest(const std::string& method, const std::string& path,
-                               const std::string& body = "") {
-    httplib::Client cli("http://127.0.0.1:18080");
+                               int port, const std::string& body = "") {
+    std::string url = "http://127.0.0.1:" + std::to_string(port);
+    httplib::Client cli(url.c_str());
     cli.set_connection_timeout(5, 0);
     cli.set_read_timeout(5, 0);
 
@@ -81,7 +82,7 @@ static void test_get_accounts_empty() {
     CHECK(server.start("127.0.0.1", 18081), "Failed to start server");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    std::string body = makeRequest("GET", "/api/accounts");
+    std::string body = makeRequest("GET", "/api/accounts", 18081);
     CHECK(!body.empty(), "No response from server");
     CHECK(body == "[]", "Expected empty array, got: " + body);
 
@@ -93,6 +94,8 @@ static void test_add_account() {
     TEST("POST /api/accounts adds new account");
     ApiServer server;
     AccountManager accounts;
+    accounts.setMasterPassword("test123");
+    accounts.unlock("test123");
 
     server.setAccountManager(&accounts);
     CHECK(server.start("127.0.0.1", 18082), "Failed to start server");
@@ -108,7 +111,7 @@ static void test_add_account() {
         "imapPort": 993
     })";
 
-    std::string body = makeRequest("POST", "/api/accounts", json);
+    std::string body = makeRequest("POST", "/api/accounts", 18082, json);
     CHECK(!body.empty(), "No response from server");
 
     auto j = nlohmann::json::parse(body);
@@ -117,7 +120,7 @@ static void test_add_account() {
     CHECK(j["displayName"] == "Test User", "DisplayName mismatch");
 
     // Verify it's in the list
-    std::string listBody = makeRequest("GET", "/api/accounts");
+    std::string listBody = makeRequest("GET", "/api/accounts", 18082);
     auto arr = nlohmann::json::parse(listBody);
     CHECK(arr.size() == 1, "Expected 1 account, got " + std::to_string(arr.size()));
 
@@ -183,7 +186,7 @@ static void test_get_accounts_after_add() {
     cli.Post("/api/accounts", j1.dump(), "application/json");
     cli.Post("/api/accounts", j2.dump(), "application/json");
 
-    std::string body = makeRequest("GET", "/api/accounts");
+    std::string body = makeRequest("GET", "/api/accounts", 18084);
     auto arr = nlohmann::json::parse(body);
     CHECK(arr.size() == 2, "Expected 2 accounts, got " + std::to_string(arr.size()));
 
@@ -212,7 +215,7 @@ static void test_update_account() {
         "imapServer": "imap.gmail.com"
     })";
 
-    std::string addResp = makeRequest("POST", "/api/accounts", addJson);
+    std::string addResp = makeRequest("POST", "/api/accounts", 18085, addJson);
     CHECK(!addResp.empty(), "Add failed");
 
     // Update the account
@@ -256,10 +259,10 @@ static void test_delete_account() {
         "smtpServer": "smtp.gmail.com",
         "imapServer": "imap.gmail.com"
     })";
-    makeRequest("POST", "/api/accounts", addJson);
+    makeRequest("POST", "/api/accounts", 18086, addJson);
 
     // Verify it exists
-    auto arr1 = nlohmann::json::parse(makeRequest("GET", "/api/accounts"));
+    auto arr1 = nlohmann::json::parse(makeRequest("GET", "/api/accounts", 18086));
     CHECK(arr1.size() >= 1, "Account not added");
 
     // Delete it
@@ -281,6 +284,16 @@ static void test_email_crud() {
     server.setStorageManager(&storage);
     CHECK(server.start("127.0.0.1", 18087), "Failed to start server");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Create the account first for foreign key constraint
+    AccountConfig acc;
+    acc.id = "acc-1";
+    acc.displayName = "Test Account";
+    acc.email = "acc-1@test.com";
+    acc.encryptedPassword = "pw";
+    acc.smtpServer = "smtp.test.com";
+    acc.imapServer = "imap.test.com";
+    CHECK(storage.saveAccount(acc), "Failed to save account");
 
     // Save an email
     std::string emailJson = R"({
@@ -354,6 +367,16 @@ static void test_search_endpoint() {
     StorageManager storage;
     CHECK(storage.open("test_phase6_temp3.db"), "Failed to open temp DB");
 
+    // Create the account first for foreign key constraint
+    AccountConfig acc;
+    acc.id = "acc-1";
+    acc.displayName = "Test Account";
+    acc.email = "acc-1@test.com";
+    acc.encryptedPassword = "pw";
+    acc.smtpServer = "smtp.test.com";
+    acc.imapServer = "imap.test.com";
+    CHECK(storage.saveAccount(acc), "Failed to save account");
+
     // Save an email that can be searched
     Email email;
     email.id = "search-email-001";
@@ -409,11 +432,11 @@ static void test_websocket_broadcast() {
     std::atomic<bool> wsReceived{false};
 
     std::thread wsThread([&]() {
-        httplib::WebSocketClient ws("ws://127.0.0.1:18091/ws/notifications");
+        httplib::ws::WebSocketClient ws("ws://127.0.0.1:18091/ws/notifications");
         if (ws.connect()) {
             wsConnected = true;
             auto result = ws.read(wsMessage);
-            if (result == httplib::ws::ReadResult::Success) {
+            if (result != httplib::ws::ReadResult::Fail) {
                 wsReceived = true;
             }
             ws.close();

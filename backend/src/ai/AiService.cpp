@@ -1,5 +1,6 @@
 #include "AiService.hpp"
 #include "OpenAiClient.hpp"
+#include "storage/StorageManager.hpp"
 #include "utils/Logger.hpp"
 
 namespace SmartMail {
@@ -56,8 +57,13 @@ void AiService::generateReplyAsync(const std::string& emailId,
 
 void AiService::reportCorrection(const std::string& emailId,
                                   const std::string& correctTag) {
-    // TODO: 记录用户修正用于优化分类 (Phase 7)
     LOG_INFO("User corrected tag for email " + emailId + " to " + correctTag);
+    if (storageManager_) {
+        storageManager_->saveAiTag(emailId, correctTag);
+        LOG_DEBUG("AI tag correction saved to database for " + emailId);
+    } else {
+        LOG_WARN("StorageManager not set, cannot persist tag correction");
+    }
 }
 
 bool AiService::isAvailable() const {

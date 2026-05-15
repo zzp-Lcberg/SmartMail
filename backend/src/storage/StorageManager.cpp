@@ -123,6 +123,58 @@ bool StorageManager::isOpen() const {
 
 // --- 邮件 CRUD ---
 
+bool StorageManager::saveAccount(const AccountConfig& acc) {
+    if (!db_) return false;
+
+    const char* sql = R"(
+        INSERT OR REPLACE INTO accounts
+            (id, display_name, email, encrypted_password, smtp_server, smtp_port,
+             imap_server, imap_port, pop3_server, pop3_port, use_ssl,
+             preferred_protocol, sync_interval, max_fetch_count, auto_classify)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    )";
+
+    StmtGuard stmt(db_, sql);
+    if (!stmt) return false;
+
+    stmt.bindText(1,  acc.id);
+    stmt.bindText(2,  acc.displayName);
+    stmt.bindText(3,  acc.email);
+    stmt.bindText(4,  acc.encryptedPassword);
+    stmt.bindText(5,  acc.smtpServer);
+    stmt.bindInt(6,   acc.smtpPort);
+    stmt.bindText(7,  acc.imapServer);
+    stmt.bindInt(8,   acc.imapPort);
+    stmt.bindText(9,  acc.pop3Server);
+    stmt.bindInt(10,  acc.pop3Port);
+    stmt.bindInt(11,  acc.imapUseSSL ? 1 : 0);
+    stmt.bindInt(12,  acc.preferredProtocol == AccountConfig::Protocol::IMAP ? 0 : 1);
+    stmt.bindInt(13,  acc.syncInterval);
+    stmt.bindInt(14,  acc.maxFetchCount);
+    stmt.bindInt(15,  acc.autoClassify ? 1 : 0);
+
+    if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+        LOG_ERROR(std::string("saveAccount failed: ") + sqlite3_errmsg(db_));
+        return false;
+    }
+    return true;
+}
+
+bool StorageManager::deleteAccount(const std::string& id) {
+    if (!db_) return false;
+
+    const char* sql = "DELETE FROM accounts WHERE id = ?;";
+    StmtGuard stmt(db_, sql);
+    if (!stmt) return false;
+
+    stmt.bindText(1, id);
+    if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
+        LOG_ERROR(std::string("deleteAccount failed: ") + sqlite3_errmsg(db_));
+        return false;
+    }
+    return true;
+}
+
 bool StorageManager::saveEmail(const Email& email) {
     if (!db_) return false;
 
@@ -494,7 +546,41 @@ bool StorageManager::createFtsIndex() {
     if (rc != SQLITE_OK) {
         LOG_WARN(std::string("FTS5: ") + (err ? err : "ok"));
         if (err) sqlite3_free(err);
+        return true; // FTS5 unavailable, non-fatal
     }
+
+    // Create triggers to keep FTS index in sync with emails table
+    const char* triggers[] = {
+        R"(
+            CREATE TRIGGER IF NOT EXISTS emails_fts_insert AFTER INSERT ON emails BEGIN
+                INSERT INTO emails_fts(rowid, sender, subject, body_plain)
+                VALUES (new.rowid, new.sender, new.subject, new.body_plain);
+            END;
+        )",
+        R"(
+            CREATE TRIGGER IF NOT EXISTS emails_fts_delete AFTER DELETE ON emails BEGIN
+                INSERT INTO emails_fts(emails_fts, rowid, sender, subject, body_plain)
+                VALUES ('delete', old.rowid, old.sender, old.subject, old.body_plain);
+            END;
+        )",
+        R"(
+            CREATE TRIGGER IF NOT EXISTS emails_fts_update AFTER UPDATE ON emails BEGIN
+                INSERT INTO emails_fts(emails_fts, rowid, sender, subject, body_plain)
+                VALUES ('delete', old.rowid, old.sender, old.subject, old.body_plain);
+                INSERT INTO emails_fts(rowid, sender, subject, body_plain)
+                VALUES (new.rowid, new.sender, new.subject, new.body_plain);
+            END;
+        )",
+    };
+    for (const char* t : triggers) {
+        sqlite3_exec(db_, t, nullptr, nullptr, nullptr);
+    }
+
+    // Rebuild index for any existing data
+    sqlite3_exec(db_,
+        "INSERT INTO emails_fts(emails_fts) VALUES('rebuild');",
+        nullptr, nullptr, nullptr);
+
     return true;
 }
 
