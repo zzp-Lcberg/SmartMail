@@ -229,6 +229,42 @@ void ApiServer::broadcast(const std::string& event, const std::string& data) {
 // ============================================================================
 
 void ApiServer::setupRoutes() {
+    // --- Master password ---
+
+    // POST /api/unlock
+    httpServer_->Post("/api/unlock", [this](const httplib::Request& req, httplib::Response& res) {
+        if (!accountManager_) {
+            res.status = 503;
+            res.set_content(R"({"error":"AccountManager not available"})", "application/json");
+            return;
+        }
+        try {
+            auto j = nlohmann::json::parse(req.body);
+            std::string password = j.value("password", "");
+            if (password.empty()) {
+                res.status = 400;
+                res.set_content(R"({"error":"Password is required"})", "application/json");
+                return;
+            }
+            bool ok;
+            if (accountManager_->isUnlocked()) {
+                ok = accountManager_->verifyMasterPassword(password);
+            } else {
+                accountManager_->setMasterPassword(password);
+                ok = true;
+            }
+            nlohmann::json result;
+            result["success"] = ok;
+            result["message"] = ok ? "Unlocked" : "Invalid password";
+            res.set_content(result.dump(), "application/json");
+        } catch (const std::exception& e) {
+            res.status = 400;
+            nlohmann::json err;
+            err["error"] = std::string("Invalid JSON: ") + e.what();
+            res.set_content(err.dump(), "application/json");
+        }
+    });
+
     // --- Account endpoints ---
 
     // GET /api/accounts
@@ -264,6 +300,10 @@ void ApiServer::setupRoutes() {
                 res.set_content(R"({"error":"Failed to add account"})", "application/json");
                 return;
             }
+            // 同步到 StorageManager 的 SQLite accounts 表
+            if (storageManager_) {
+                storageManager_->saveAccount(acc);
+            }
             res.status = 201;
             res.set_content(accountToJson(acc).dump(), "application/json");
         } catch (const std::exception& e) {
@@ -290,6 +330,9 @@ void ApiServer::setupRoutes() {
                 res.status = 404;
                 res.set_content(R"({"error":"Account not found"})", "application/json");
                 return;
+            }
+            if (storageManager_) {
+                storageManager_->saveAccount(acc);
             }
             res.set_content(accountToJson(acc).dump(), "application/json");
         } catch (const std::exception& e) {
@@ -581,7 +624,7 @@ void ApiServer::setupRoutes() {
         res.set_content(arr.dump(), "application/json");
     });
 
-    LOG_DEBUG("API routes registered (16 endpoints)");
+    LOG_DEBUG("API routes registered (17 endpoints)");
 }
 
 } // namespace SmartMail

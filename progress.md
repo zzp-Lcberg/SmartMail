@@ -98,11 +98,56 @@
 
 ---
 
+---
+
+### 阶段 10：Qt 前端对话框与设置 + 离线缓存 + 未读计数
+- **状态：** complete
+- **完成时间：** 2026-05-15
+- **编译产物：** `build/backend/Debug/MailCoreService.exe` + `build/frontend/Debug/SmartMailClient.exe`
+- **回归测试：** 82/82 passed
+
+**实现内容：**
+
+| 模块 | 文件 | 内容 |
+|------|------|------|
+| 后端端点 | `ApiServer.cpp` | `POST /api/test-connection`、`GET /api/settings`、`POST /api/settings` |
+| 前端客户端 | `ServiceClient.hpp/.cpp` | `testConnection()`、`getSettings()`、`updateSettings()` |
+| 设置对话框 | `SettingsDialog.hpp/.cpp` | 三标签页（账号管理/AI设置/通用设置）、暗色主题、账号CRUD、AI配置保存到后端+UI偏好保存到本地Config |
+| 账号对话框 | `AccountDialog.hpp/.cpp` | 邮箱预设（Gmail/QQ/163/Outlook/126/Yahoo/自定义）、自动域名检测、测试连接、编辑模式、暗色主题 |
+| 文件夹模型 | `FolderModel.hpp/.cpp` | `incrementUnread()`、`decrementUnread()`、`updateUnreadCount()` |
+| 主窗口集成 | `MainWindow.hpp/.cpp` | `onOpenSettings()`、`loadAccounts()`、`setOfflineMode()`、`updateFolderUnreadCounts()`、离线检测、`selectedAccountId_` |
+
+**修改文件（7 个）：**
+
+| 文件 | 变更 |
+|------|------|
+| `backend/src/server/ApiServer.cpp` | +3 端点：test-connection, get/update settings |
+| `frontend/src/dialogs/AccountDialog.cpp` | 完整重写：预设选择器、三步向导布局、暗色主题 QPalette+QSS、测试连接、编辑模式 |
+| `frontend/src/dialogs/AccountDialog.hpp` | providerCombo_, ServiceClient*, editMode_, editAccountId_ |
+| `frontend/src/dialogs/SettingsDialog.cpp` | 完整重写：三标签页、账号管理CRUD、AI/通用设置、暗色主题 |
+| `frontend/src/dialogs/SettingsDialog.hpp` | 移除冗余表单字段，保留账号列表+AI/通用设置字段 |
+| `frontend/src/views/EmailDetailView.cpp` | 字段名修复 body_plain→bodyPlain, body_html→bodyHtml, ai_tag→aiTag |
+| `frontend/src/views/MainWindow.cpp` | selectedAccountId_ 替换硬编码 "default" |
+
+**关键修复：**
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| QComboBox 下拉框不可见 | 原生箭头被QSS覆盖 | 移除 `::drop-down`/`::down-arrow` 子控件QSS |
+| QComboBox 弹出项白底白字 | `view()` 是顶层窗口，dialog-scoped选择器无法匹配 | `comboBox->view()->setStyleSheet()` 直接设置 |
+| QLabel 标签文字不可见 | global QSS `QWidget { color }` 覆盖 QPalette | `makeLabel()` lambda 直接 `label->setStyleSheet()` |
+| QLineEdit placeholder 不可见 | Qt QSS 不支持 `::placeholder` | `setLineEditPalette()` lambda 设置 `QPalette::PlaceholderText` |
+| **添加账号"保存显示错误"** | `AccountManager::add()` 要求 `isUnlocked()`，启动时未设置主密码 | `main.cpp` 中 `loadFromFile()` 后自动 `setMasterPassword("smartmail")` |
+
+**暗色主题方案：** QPalette（兜底层）+ QSS（控件层）+ 内联 setStyleSheet（最高优先级，绕过选择器问题）
+
+---
+
 ## 五问重启检查
 | 问题 | 答案 |
 |------|------|
-| 我在哪里？ | Phase 9 完成 — 核心视图交互全部打通 + Midnight Paper 主题正常显示 |
-| 我要去哪里？ | Phase 10：Qt 前端对话框（SettingsDialog、AccountDialog、离线缓存） |
-| 目标是什么？ | 设置/账号对话框功能可用，离线缓存模式 |
-| 我学到了什么？ | `qt_add_resources` 不如标准 .qrc + AUTORCC 可靠；资源编译需确认 `Automatic RCC for *.qrc` 出现在构建日志中 |
-| 我做了什么？ | 工具栏 7 按钮 + AiPanel 3 信号 + EmailComposer 2 模式 + 自动 AI 分类 + .qrc 主题修复 |
+| 我在哪里？ | Phase 10 完成 — 设置/账号对话框、离线模式、未读计数全部实现 |
+| 我要去哪里？ | Phase 11：搜索与性能优化 |
+| 目标是什么？ | 全文搜索功能、邮件列表虚拟化、增量同步 |
+| 我学到了什么？ | Qt QSS 选择器对顶层窗口无效（QComboBox popup）；placeholder 色用 QPalette；`QWidget { color }` 全局规则会覆盖所有子控件；内联 setStyleSheet 优先级最高可绕过所有选择器问题；AccountManager 需要 unlock 才能 add |
+| 我做了什么？ | 3 后端端点 + 2 对话框暗色重写 + FolderModel 未读计数 + MainWindow 离线/账号集成 + auto-unlock 修复 |

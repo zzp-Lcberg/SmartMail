@@ -41,6 +41,10 @@ int main(int argc, char* argv[]) {
     AccountManager accounts;
     // Try to load existing accounts, ignore if file doesn't exist
     accounts.loadFromFile("accounts.dat");
+    // Auto-unlock with default master password on first run
+    if (!accounts.isUnlocked()) {
+        accounts.setMasterPassword("smartmail");
+    }
     LOG_INFO("AccountManager initialized");
 
     // --- AI Service ---

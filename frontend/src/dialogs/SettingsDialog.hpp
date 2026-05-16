@@ -36,14 +36,6 @@ private:
 
     // 账号管理页
     QListWidget* accountList_;
-    QLineEdit* displayNameEdit_;
-    QLineEdit* emailEdit_;
-    QLineEdit* passwordEdit_;
-    QLineEdit* smtpServerEdit_;
-    QSpinBox* smtpPortSpin_;
-    QLineEdit* imapServerEdit_;
-    QSpinBox* imapPortSpin_;
-    QCheckBox* sslCheck_;
 
     // AI 设置页
     QLineEdit* apiKeyEdit_;

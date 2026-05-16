@@ -6,6 +6,8 @@
 namespace SmartMail {
 
 EmailDetailView::EmailDetailView(QWidget* parent) : QWidget(parent) {
+    setStyleSheet("QWidget#emailDetailView { background-color: #faf8f5; }");
+
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(24, 20, 24, 20);
     layout->setSpacing(12);
@@ -44,15 +46,35 @@ EmailDetailView::EmailDetailView(QWidget* parent) : QWidget(parent) {
     // 邮件正文
     bodyView_ = new QTextBrowser();
     bodyView_->setOpenExternalLinks(true);
+    bodyView_->setStyleSheet(
+        "QTextBrowser {"
+        "  background-color: #faf8f5;"
+        "  color: #2c3038;"
+        "  font-size: 14px;"
+        "  border: 1px solid #e0dbd0;"
+        "  border-radius: 4px;"
+        "  padding: 12px;"
+        "  selection-background-color: #c5d0f8;"
+        "}"
+    );
     layout->addWidget(bodyView_);
 }
 
-void EmailDetailView::showEmail(const QJsonObject& data) {
-    subjectLabel_->setText(data["subject"].toString());
-    senderLabel_->setText("发件人: " + data["sender"].toString());
-    timeLabel_->setText(data["time"].toString());
+void EmailDetailView::showEmail(const QJsonObject& json) {
+    subjectLabel_->setText(json["subject"].toString());
+    senderLabel_->setText("发件人: " + json["sender"].toString());
 
-    QString tag = data["ai_tag"].toString();
+    // 时间戳转换
+    qint64 receivedAt = static_cast<qint64>(json["receivedAt"].toDouble());
+    if (receivedAt > 0) {
+        QDateTime dt = QDateTime::fromSecsSinceEpoch(receivedAt);
+        timeLabel_->setText(dt.toString("yyyy-MM-dd hh:mm"));
+    } else {
+        timeLabel_->setText("");
+    }
+
+    // AI 标签
+    QString tag = json["aiTag"].toString();
     if (!tag.isEmpty()) {
         tagLabel_->setText(tag);
         tagLabel_->show();
@@ -60,11 +82,16 @@ void EmailDetailView::showEmail(const QJsonObject& data) {
         tagLabel_->hide();
     }
 
-    QString body = data["body_html"].toString();
+    // 邮件正文
+    QString body = json["bodyHtml"].toString();
     if (body.isEmpty()) {
-        body = data["body_plain"].toString();
+        body = json["bodyPlain"].toString();
     }
-    bodyView_->setHtml(body);
+    if (!body.isEmpty()) {
+        bodyView_->setHtml(body);
+    } else {
+        bodyView_->setPlainText(json["bodyPlain"].toString());
+    }
 }
 
 void EmailDetailView::clear() {

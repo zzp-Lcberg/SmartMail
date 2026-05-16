@@ -26,6 +26,8 @@ public:
 private slots:
     void onTestConnection();
     void onSave();
+    void onProviderChanged(int index);
+    void onEmailTextChanged(const QString& text);
 
 private:
     QLineEdit* displayNameEdit_;
@@ -37,6 +39,7 @@ private:
     QSpinBox* imapPortSpin_;
     QCheckBox* sslCheck_;
     QComboBox* protocolCombo_;
+    QComboBox* providerCombo_;
     QSpinBox* syncIntervalSpin_;
 
     ServiceClient* client_ = nullptr;

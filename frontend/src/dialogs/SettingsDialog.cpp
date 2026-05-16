@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QGroupBox>
 #include <QLabel>
+#include <QPalette>
 #include <QMessageBox>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -19,47 +20,117 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
     setWindowTitle("设置");
     resize(600, 500);
 
+    // QPalette 兜底暗色背景
+    QPalette darkPalette;
+    darkPalette.setColor(QPalette::Window, QColor("#1a1d23"));
+    darkPalette.setColor(QPalette::WindowText, QColor("#e1e5ee"));
+    darkPalette.setColor(QPalette::Base, QColor("#1a1d23"));
+    darkPalette.setColor(QPalette::AlternateBase, QColor("#21252b"));
+    darkPalette.setColor(QPalette::Text, QColor("#e1e5ee"));
+    darkPalette.setColor(QPalette::Button, QColor("#333842"));
+    darkPalette.setColor(QPalette::ButtonText, QColor("#e1e5ee"));
+    darkPalette.setColor(QPalette::Highlight, QColor("#5c7cfa"));
+    darkPalette.setColor(QPalette::HighlightedText, QColor("#ffffff"));
+    darkPalette.setColor(QPalette::PlaceholderText, QColor("#555b68"));
+    setPalette(darkPalette);
+    setAutoFillBackground(true);
+
+    // QSS 微调
+    setStyleSheet(
+        "SettingsDialog, SettingsDialog QWidget {"
+        "  color: #e1e5ee;"
+        "  background-color: #1a1d23;"
+        "}"
+        "SettingsDialog QTabWidget::pane {"
+        "  border: 1px solid #333842;"
+        "}"
+        "SettingsDialog QTabBar::tab {"
+        "  background-color: #21252b; color: #a0a8b8;"
+        "  padding: 8px 20px; border: 1px solid #333842;"
+        "  border-bottom: none; margin-right: 2px;"
+        "}"
+        "SettingsDialog QTabBar::tab:selected {"
+        "  background-color: #1a1d23; color: #5c7cfa;"
+        "  border-bottom: 2px solid #5c7cfa;"
+        "}"
+        "SettingsDialog QGroupBox {"
+        "  background-color: #21252b; color: #e1e5ee;"
+        "  border: 1px solid #333842; border-radius: 4px;"
+        "  margin-top: 12px; padding: 16px 12px 12px 12px;"
+        "  font-weight: bold;"
+        "}"
+        "SettingsDialog QGroupBox::title {"
+        "  background-color: #21252b;"
+        "  subcontrol-origin: margin; left: 12px;"
+        "  padding: 0 6px; color: #5c7cfa;"
+        "}"
+        "SettingsDialog QLabel {"
+        "  background-color: transparent; color: #e1e5ee; font-size: 12px;"
+        "}"
+        "SettingsDialog QLineEdit {"
+        "  background-color: #1a1d23; color: #e1e5ee;"
+        "  border: 1px solid #333842; border-radius: 4px;"
+        "  padding: 6px 8px; font-size: 12px;"
+        "}"
+        "SettingsDialog QLineEdit:focus { border: 1px solid #5c7cfa; }"
+        "SettingsDialog QSpinBox {"
+        "  background-color: #1a1d23; color: #e1e5ee;"
+        "  border: 1px solid #333842; border-radius: 4px;"
+        "  padding: 6px 8px;"
+        "}"
+        "SettingsDialog QCheckBox {"
+        "  background-color: transparent; color: #e1e5ee;"
+        "}"
+        "SettingsDialog QListWidget {"
+        "  background-color: #1a1d23; color: #e1e5ee;"
+        "  border: 1px solid #333842; border-radius: 4px;"
+        "}"
+        "SettingsDialog QListWidget::item {"
+        "  padding: 6px 8px;"
+        "}"
+        "SettingsDialog QListWidget::item:selected {"
+        "  background-color: #2a3050; color: #ffffff;"
+        "}"
+        "SettingsDialog QPushButton {"
+        "  background-color: #333842; color: #e1e5ee;"
+        "  border: 1px solid #3a3f4b; border-radius: 4px;"
+        "  padding: 6px 16px; font-size: 12px;"
+        "}"
+        "SettingsDialog QPushButton:hover { background-color: #3a404e; }"
+    );
+
     auto* mainLayout = new QVBoxLayout(this);
     tabs_ = new QTabWidget();
+
+    // Helper: 手动创建标签确保暗色渲染
+    auto makeLabel = [](const QString& text) {
+        auto* label = new QLabel(text);
+        label->setStyleSheet("color: #e1e5ee; font-size: 12px; background-color: transparent;");
+        return label;
+    };
 
     // === 账号管理页 ===
     auto* accountPage = new QWidget();
     auto* accountLayout = new QVBoxLayout(accountPage);
 
+    auto* accountHint = new QLabel("点击「添加账号」选择邮箱类型并填写账号信息");
+    accountHint->setStyleSheet("color: #6a7180; font-size: 11px; background-color: transparent;");
+    accountLayout->addWidget(accountHint);
+
     accountList_ = new QListWidget();
-    accountLayout->addWidget(new QLabel("已配置账号:"));
+    accountList_->setMinimumHeight(120);
+    accountLayout->addWidget(makeLabel("已配置账号:"));
     accountLayout->addWidget(accountList_);
-
-    auto* formLayout = new QFormLayout();
-    displayNameEdit_ = new QLineEdit();
-    emailEdit_ = new QLineEdit();
-    passwordEdit_ = new QLineEdit();
-    passwordEdit_->setEchoMode(QLineEdit::Password);
-    smtpServerEdit_ = new QLineEdit();
-    smtpPortSpin_ = new QSpinBox();
-    smtpPortSpin_->setRange(1, 65535);
-    smtpPortSpin_->setValue(465);
-    imapServerEdit_ = new QLineEdit();
-    imapPortSpin_ = new QSpinBox();
-    imapPortSpin_->setRange(1, 65535);
-    imapPortSpin_->setValue(993);
-    sslCheck_ = new QCheckBox("使用 SSL/TLS");
-    sslCheck_->setChecked(true);
-
-    formLayout->addRow("显示名称:", displayNameEdit_);
-    formLayout->addRow("邮箱地址:", emailEdit_);
-    formLayout->addRow("密码/授权码:", passwordEdit_);
-    formLayout->addRow("SMTP 服务器:", smtpServerEdit_);
-    formLayout->addRow("SMTP 端口:", smtpPortSpin_);
-    formLayout->addRow("IMAP 服务器:", imapServerEdit_);
-    formLayout->addRow("IMAP 端口:", imapPortSpin_);
-    formLayout->addRow(sslCheck_);
-    accountLayout->addLayout(formLayout);
 
     auto* accountBtnLayout = new QHBoxLayout();
     auto* addAccountBtn = new QPushButton("添加账号");
     auto* editAccountBtn = new QPushButton("编辑账号");
     auto* removeAccountBtn = new QPushButton("删除账号");
+    addAccountBtn->setStyleSheet(
+        "QPushButton { background-color: #5c7cfa; color: #ffffff; border: none;"
+        "  border-radius: 4px; padding: 6px 16px; font-weight: bold; }"
+        "QPushButton:hover { background-color: #6b8afb; }"
+    );
     accountBtnLayout->addWidget(addAccountBtn);
     accountBtnLayout->addWidget(editAccountBtn);
     accountBtnLayout->addWidget(removeAccountBtn);
@@ -81,8 +152,8 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
     apiUrlEdit_ = new QLineEdit("https://api.openai.com/v1/chat/completions");
     autoClassifyCheck_ = new QCheckBox("新邮件自动 AI 分类");
     autoClassifyCheck_->setChecked(true);
-    aiForm->addRow("API Key:", apiKeyEdit_);
-    aiForm->addRow("API URL:", apiUrlEdit_);
+    aiForm->addRow(makeLabel("API Key:"), apiKeyEdit_);
+    aiForm->addRow(makeLabel("API URL:"), apiUrlEdit_);
     aiForm->addRow(autoClassifyCheck_);
     aiLayout->addWidget(aiGroup);
     aiLayout->addStretch();
@@ -96,7 +167,7 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
     syncIntervalSpin_->setRange(30, 3600);
     syncIntervalSpin_->setValue(300);
     syncIntervalSpin_->setSuffix(" 秒");
-    syncForm->addRow("同步间隔:", syncIntervalSpin_);
+    syncForm->addRow(makeLabel("同步间隔:"), syncIntervalSpin_);
     generalLayout->addWidget(syncGroup);
 
     minimizeToTrayCheck_ = new QCheckBox("关闭时最小化到托盘");
@@ -112,10 +183,15 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
     // 底部按钮
     auto* bottomLayout = new QHBoxLayout();
     auto* saveBtn = new QPushButton("保存");
+    saveBtn->setStyleSheet(
+        "QPushButton { background-color: #5c7cfa; color: #ffffff; border: none;"
+        "  border-radius: 4px; padding: 6px 16px; font-weight: bold; }"
+        "QPushButton:hover { background-color: #6b8afb; }"
+    );
     auto* cancelBtn = new QPushButton("取消");
     bottomLayout->addStretch();
-    bottomLayout->addWidget(saveBtn);
     bottomLayout->addWidget(cancelBtn);
+    bottomLayout->addWidget(saveBtn);
     mainLayout->addLayout(bottomLayout);
 
     connect(saveBtn, &QPushButton::clicked, this, &SettingsDialog::onSave);

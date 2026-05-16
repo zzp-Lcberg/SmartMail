@@ -384,11 +384,11 @@ void MainWindow::onEmailSelected(const QString& emailId) {
         currentEmail_.id = emailId.toStdString();
         currentEmail_.sender = detail["sender"].toString().toStdString();
         currentEmail_.subject = detail["subject"].toString().toStdString();
-        currentEmail_.bodyPlain = detail["body_plain"].toString().toStdString();
-        currentEmail_.bodyHtml = detail["body_html"].toString().toStdString();
+        currentEmail_.bodyPlain = detail["bodyPlain"].toString().toStdString();
+        currentEmail_.bodyHtml = detail["bodyHtml"].toString().toStdString();
         currentEmail_.folder = detail["folder"].toString().toStdString();
-        if (!detail["ai_tag"].isNull()) {
-            currentEmail_.aiTag = detail["ai_tag"].toString().toStdString();
+        if (!detail["aiTag"].isNull()) {
+            currentEmail_.aiTag = detail["aiTag"].toString().toStdString();
         }
 
         emailDetailView_->showEmail(detail);
